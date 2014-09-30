@@ -523,91 +523,6 @@ int Load(const char *fileName, double **values, int **arrayCounts, int ***arrayI
     return(lineCount);
 }
 
-    
-
-struct LLSVMModel *LoadModel(const char *fileName, 
-                     int *lineCount)
-{
-    /*
-    FILE *f;
-    int max = 10000, maxline = 100000;
-
-    char *buf = new char[maxline];
-
-    f = fopen(fileName, "r");
-    if(f == NULL)
-    {
-        *arrayCounts = NULL, *arrayIndexes = NULL, *arrayValues = NULL, *targets = NULL;
-        return(0);
-    }
-    int lineCount = 0;
-    while((fgets(buf, maxline, f) != NULL) && (strlen(buf) > 1)) lineCount++;
-    fseek(f, 0, SEEK_SET);
-
-    if(labels != NULL) *labels = 0;
-    *arrayCounts = new int [lineCount];
-    *arrayIndexes = new int *[lineCount];
-    *arrayValues = new double *[lineCount];
-    *targets = new int[lineCount];
-
-    int *thisIndexes = new int[max];
-    double *thisValues = new double[max];
-
-    int index = 0;
-    while((fgets(buf, maxline, f) != NULL) && (strlen(buf) > 1))
-    {
-        buf[strlen(buf) - 1] = 0;
-        const char *data = buf;
-
-        int target = atoi(data);
-        if(target == -1) target = 2;
-        if((labels != NULL) && (target > *labels)) *labels = target;
-        (*targets)[index] = target - 1;
-
-        data = strchr(data, 32);
-        if(data != NULL) data++;
-
-        int count = 0;
-        while((data != NULL) && (data[0] >= '0') && (data[0] <= '9'))
-        {
-            thisIndexes[count] = atoi(data) - 1;
-            if((dimensions != NULL) && (thisIndexes[count] + 1 > *dimensions)) *dimensions = thisIndexes[count] + 1;
-
-            data = strchr(data, 58);
-            if(data != NULL)
-            {
-                data++;
-                thisValues[count] = atof(data);
-                if((!maxIndex) || (thisIndexes[count] < maxIndex)) count++;
-            }
-            data = strchr(data, 32);
-            if(data != NULL) data++;
-        }
-        (*arrayCounts)[index] = count;
-        (*arrayIndexes)[index] = new int[count];
-        (*arrayValues)[index] = new double [count];
-        memcpy((*arrayIndexes)[index], thisIndexes, count * sizeof(int));
-
-        memcpy((*arrayValues)[index], thisValues, count * sizeof(double));
-        index++;
-    }
-    fclose(f);
-
-    int dim = ((dimensions == NULL) ? maxIndex : (*dimensions)), i, j;
-    *values = new double[dim * lineCount]; 
-    memset(*values, 0, dim * lineCount * sizeof(double));
-    for(i = 0; i < lineCount; i++) for(j = 0; j < (*arrayCounts)[i]; j++) (*values)[i * dim + (*arrayIndexes)[i][j]] = (*arrayValues)[i][j];
-
-    if(buf != NULL) delete[] buf;
-    if(thisIndexes != NULL) delete[] thisIndexes;
-    if(thisValues != NULL) delete[] thisValues;
-
-    return(lineCount);
-    */
-}
-
-
-
 
 void trainLLSVM(const char *trainFile,
                 const char *modelFile,
@@ -804,6 +719,7 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
     fprintf(fp,"distCoef %f\n", model->distCoef);
 
     fprintf(fp, "SV\n");
+    
     fprintf(fp, "weights\n");
     for (int i = 0; i < model->nModels; i++)
     {
@@ -813,6 +729,7 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
         }
         fprintf(fp, "\n");
     }    
+
     fprintf(fp, "bias\n");
     for (int i = 0; i < model->nModels; i++)
     {
@@ -822,84 +739,108 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
         }
         fprintf(fp, "\n");
     }    
-/*
-    int kNN;
-    int kmeansClusters;
-    double *means;
-    int *coorIndexes;
-    double *coorWeights;
-    double **bias;
-    double **weights;
-
-    int nr_class = model->nr_class;
-    int l = model->l;
-    fprintf(fp, "nr_class %d\n", nr_class);
-    fprintf(fp, "total_sv %d\n",l);
     
+    fprintf(fp, "coordinates\n");
+    for (int i = 0; i < model->kNN; i++)
     {
-        fprintf(fp, "rho");
-        for(int i=0;i<nr_class*(nr_class-1)/2;i++)
-            fprintf(fp," %g",model->rho[i]);
+        fprintf(fp, "%.16g ",model->coorWeights[i]);
         fprintf(fp, "\n");
-    }
-    
-    if(model->label)
+    }    
+
+    fprintf(fp, "indices\n");
+    for (int i = 0; i < model->kNN; i++)
     {
-        fprintf(fp, "label");
-        for(int i=0;i<nr_class;i++)
-            fprintf(fp," %d",model->label[i]);
-        fprintf(fp, "\n");
-    }
+        fprintf(fp, "%d ",model->coorIndexes[i]);
+    }    
 
-    if(model->probA) // regression has probA only
-    {
-        fprintf(fp, "probA");
-        for(int i=0;i<nr_class*(nr_class-1)/2;i++)
-            fprintf(fp," %g",model->probA[i]);
-        fprintf(fp, "\n");
-    }
-    if(model->probB)
-    {
-        fprintf(fp, "probB");
-        for(int i=0;i<nr_class*(nr_class-1)/2;i++)
-            fprintf(fp," %g",model->probB[i]);
-        fprintf(fp, "\n");
-    }
-
-    if(model->nSV)
-    {
-        fprintf(fp, "nr_sv");
-        for(int i=0;i<nr_class;i++)
-            fprintf(fp," %d",model->nSV[i]);
-        fprintf(fp, "\n");
-    }
-
-    fprintf(fp, "SV\n");
-    const double * const *sv_coef = model->sv_coef;
-    const svm_node * const *SV = model->SV;
-
-    for(int i=0;i<l;i++)
-    {
-        for(int j=0;j<nr_class-1;j++)
-            fprintf(fp, "%.16g ",sv_coef[j][i]);
-
-        const svm_node *p = SV[i];
-
-        if(param.kernel_type == PRECOMPUTED)
-            fprintf(fp,"0:%d ",(int)(p->value));
-        else
-            while(p->index != -1)
-            {
-                fprintf(fp,"%d:%.8g ",p->index,p->value);
-                p++;
-            }
-        fprintf(fp, "\n");
-    }
-*/
     setlocale(LC_ALL, old_locale);
     free(old_locale);
 
     if (ferror(fp) != 0 || fclose(fp) != 0) return -1;
     else return 0;
+}
+
+
+    
+
+struct LLSVMModel *LoadModel(const char *fileName, 
+                     int *lineCount)
+{
+    /*
+    FILE *f;
+    int max = 10000, maxline = 100000;
+
+    char *buf = new char[maxline];
+
+    f = fopen(fileName, "r");
+    if(f == NULL)
+    {
+        *arrayCounts = NULL, *arrayIndexes = NULL, *arrayValues = NULL, *targets = NULL;
+        return(0);
+    }
+    int lineCount = 0;
+    while((fgets(buf, maxline, f) != NULL) && (strlen(buf) > 1)) lineCount++;
+    fseek(f, 0, SEEK_SET);
+
+    if(labels != NULL) *labels = 0;
+    *arrayCounts = new int [lineCount];
+    *arrayIndexes = new int *[lineCount];
+    *arrayValues = new double *[lineCount];
+    *targets = new int[lineCount];
+
+    int *thisIndexes = new int[max];
+    double *thisValues = new double[max];
+
+    int index = 0;
+    while((fgets(buf, maxline, f) != NULL) && (strlen(buf) > 1))
+    {
+        buf[strlen(buf) - 1] = 0;
+        const char *data = buf;
+
+        int target = atoi(data);
+        if(target == -1) target = 2;
+        if((labels != NULL) && (target > *labels)) *labels = target;
+        (*targets)[index] = target - 1;
+
+        data = strchr(data, 32);
+        if(data != NULL) data++;
+
+        int count = 0;
+        while((data != NULL) && (data[0] >= '0') && (data[0] <= '9'))
+        {
+            thisIndexes[count] = atoi(data) - 1;
+            if((dimensions != NULL) && (thisIndexes[count] + 1 > *dimensions)) *dimensions = thisIndexes[count] + 1;
+
+            data = strchr(data, 58);
+            if(data != NULL)
+            {
+                data++;
+                thisValues[count] = atof(data);
+                if((!maxIndex) || (thisIndexes[count] < maxIndex)) count++;
+            }
+            data = strchr(data, 32);
+            if(data != NULL) data++;
+        }
+        (*arrayCounts)[index] = count;
+        (*arrayIndexes)[index] = new int[count];
+        (*arrayValues)[index] = new double [count];
+        memcpy((*arrayIndexes)[index], thisIndexes, count * sizeof(int));
+
+        memcpy((*arrayValues)[index], thisValues, count * sizeof(double));
+        index++;
+    }
+    fclose(f);
+
+    int dim = ((dimensions == NULL) ? maxIndex : (*dimensions)), i, j;
+    *values = new double[dim * lineCount]; 
+    memset(*values, 0, dim * lineCount * sizeof(double));
+    for(i = 0; i < lineCount; i++) for(j = 0; j < (*arrayCounts)[i]; j++) (*values)[i * dim + (*arrayIndexes)[i][j]] = (*arrayValues)[i][j];
+
+    if(buf != NULL) delete[] buf;
+    if(thisIndexes != NULL) delete[] thisIndexes;
+    if(thisValues != NULL) delete[] thisValues;
+
+    return(lineCount);
+    */
 }
 
