@@ -68,6 +68,8 @@
 
 struct LLSVMModel
 {
+    int nModels;
+    int dim;
     int kNN;
     int kmeansClusters;
     double *means;
@@ -94,6 +96,7 @@ int MyRand();
 void KMeansClustering(double *means, int clusters, double *values, int lineCount, int dim, int iterations);
 int Load(const char *fileName, double **values, int **arrayCounts, int ***arrayIndexes, double ***arrayValues, int **targets, int *labels, int *dimensions, int maxIndex);
 struct LLSVMModel *LoadModel(const char *fileName, int *lineCount);
+int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model);
 void trainLLSVM(const char *trainFile,
                 const char *modelFile,
                const double scale, 

@@ -122,25 +122,16 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
 	void (*print_func)(const char*) = NULL;	// default printing to stdout
 
 	// default values
-	param.svm_type = C_SVC;
-	param.kernel_type = RBF;
-	param.degree = 3;
-	param.gamma = 0;	// 1/num_features
-	param.coef0 = 0;
-	param.nu = 0.5;
-	param.cache_size = 100;
-	param.C = 1;
-	param.eps = 1e-3;
-	param.p = 0.1;
-	param.shrinking = 1;
-	param.probability = 0;
-	param.nr_weight = 0;
-	param.weight_label = NULL;
-	param.weight = NULL;
-        walltime = -1;
-        savetime = -1;
-	cross_validation = 0;
-    subsamplingAmount  = -1;
+	param.scale = 1.0;
+    param.kMeansperLabel = 10;
+    param.kNN = 20;
+    param.svmIterations = 500;
+    param.distanceCoefficient = 0.1;
+    param.jointClustering = 0;
+
+    walltime = -1;
+    savetime = -1;
+	subsamplingAmount  = -1;
 
 	// parse options
 	for(i=1;i<argc;i++)

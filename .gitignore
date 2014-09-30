@@ -2,3 +2,5 @@ libSVM/**
 *.o
 llsvm-train
 llsvm-predict
+model
+*.kate-swp

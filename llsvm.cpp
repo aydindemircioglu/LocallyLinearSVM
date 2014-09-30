@@ -61,6 +61,7 @@
 #include <string>
 #define Malloc(type,n) (type *)malloc((n)*sizeof(type))
 
+#include "llsvm.h"
 
 
 void Free(int lineCount, double *values, int *arrayCounts, int **arrayIndexes, double **arrayValues, int *targets)
@@ -673,6 +674,25 @@ void trainLLSVM(const char *trainFile,
     }
 
     // save model file
+    LLSVMModel llsvm_model;
+    llsvm_model.nModels = labels;
+    llsvm_model.kNN = kNN;
+    llsvm_model.kmeansClusters = kmeansClusters ;
+    llsvm_model.means = means;
+    llsvm_model.coorIndexes = coorIndexes;
+    llsvm_model.coorWeights = coorWeights ;
+    llsvm_model.distCoef = distCoef;
+    llsvm_model.bias = bias;
+    llsvm_model.weights = weights;
+    llsvm_model.dim = dim;
+
+    
+    if (LLSVMSaveModel(modelFile, &llsvm_model) != 0)
+    {
+        // throw bad bad error
+        printf("Bad error while saving.");
+        exit(-1);
+    }
     
     if(coorIndexes != NULL) delete[] coorIndexes;
     if(coorWeights != NULL) delete[] coorWeights;
@@ -769,4 +789,117 @@ void predictLLSVM(const char *testFile,
 }
 
 
+int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
+{
+    FILE *fp = fopen(model_file_name,"w");
+    if(fp==NULL) return -1;
+
+    char *old_locale = strdup(setlocale(LC_ALL, NULL));
+    setlocale(LC_ALL, "C");
+
+    fprintf(fp,"svm_type llsvm\n");
+    fprintf(fp, "labels %d\n", model->nModels);
+    fprintf(fp,"kNN %d\n", model->kNN);
+    fprintf(fp,"kmeansClusters %d\n", model->kmeansClusters);
+    fprintf(fp,"distCoef %f\n", model->distCoef);
+
+    fprintf(fp, "SV\n");
+    fprintf(fp, "weights\n");
+    for (int i = 0; i < model->nModels; i++)
+    {
+        for(int m = 0; m < model->dim * model->kmeansClusters; m++)
+        {
+            fprintf(fp, "%.16g ",model->bias[i][m]);
+        }
+        fprintf(fp, "\n");
+    }    
+    fprintf(fp, "bias\n");
+    for (int i = 0; i < model->nModels; i++)
+    {
+        for(int m = 0; m < model->kmeansClusters; m++)
+        {
+            fprintf(fp, "%.16g ",model->bias[i][m]);
+        }
+        fprintf(fp, "\n");
+    }    
+/*
+    int kNN;
+    int kmeansClusters;
+    double *means;
+    int *coorIndexes;
+    double *coorWeights;
+    double **bias;
+    double **weights;
+
+    int nr_class = model->nr_class;
+    int l = model->l;
+    fprintf(fp, "nr_class %d\n", nr_class);
+    fprintf(fp, "total_sv %d\n",l);
+    
+    {
+        fprintf(fp, "rho");
+        for(int i=0;i<nr_class*(nr_class-1)/2;i++)
+            fprintf(fp," %g",model->rho[i]);
+        fprintf(fp, "\n");
+    }
+    
+    if(model->label)
+    {
+        fprintf(fp, "label");
+        for(int i=0;i<nr_class;i++)
+            fprintf(fp," %d",model->label[i]);
+        fprintf(fp, "\n");
+    }
+
+    if(model->probA) // regression has probA only
+    {
+        fprintf(fp, "probA");
+        for(int i=0;i<nr_class*(nr_class-1)/2;i++)
+            fprintf(fp," %g",model->probA[i]);
+        fprintf(fp, "\n");
+    }
+    if(model->probB)
+    {
+        fprintf(fp, "probB");
+        for(int i=0;i<nr_class*(nr_class-1)/2;i++)
+            fprintf(fp," %g",model->probB[i]);
+        fprintf(fp, "\n");
+    }
+
+    if(model->nSV)
+    {
+        fprintf(fp, "nr_sv");
+        for(int i=0;i<nr_class;i++)
+            fprintf(fp," %d",model->nSV[i]);
+        fprintf(fp, "\n");
+    }
+
+    fprintf(fp, "SV\n");
+    const double * const *sv_coef = model->sv_coef;
+    const svm_node * const *SV = model->SV;
+
+    for(int i=0;i<l;i++)
+    {
+        for(int j=0;j<nr_class-1;j++)
+            fprintf(fp, "%.16g ",sv_coef[j][i]);
+
+        const svm_node *p = SV[i];
+
+        if(param.kernel_type == PRECOMPUTED)
+            fprintf(fp,"0:%d ",(int)(p->value));
+        else
+            while(p->index != -1)
+            {
+                fprintf(fp,"%d:%.8g ",p->index,p->value);
+                p++;
+            }
+        fprintf(fp, "\n");
+    }
+*/
+    setlocale(LC_ALL, old_locale);
+    free(old_locale);
+
+    if (ferror(fp) != 0 || fclose(fp) != 0) return -1;
+    else return 0;
+}
 
