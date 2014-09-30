@@ -1,0 +1,4 @@
+libSVM/**
+*.o
+llsvm-train
+llsvm-predict
