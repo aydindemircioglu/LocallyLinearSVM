@@ -63,6 +63,9 @@
 
 #include "llsvm.h"
 
+static char *line = NULL;
+static int max_line_len = 1024;
+
 
 void Free(int lineCount, double *values, int *arrayCounts, int **arrayIndexes, double **arrayValues, int *targets)
 {
@@ -714,6 +717,7 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
 
     fprintf(fp,"svm_type llsvm\n");
     fprintf(fp, "labels %d\n", model->nModels);
+    fprintf(fp, "dim %d\n", model->dim);
     fprintf(fp,"kNN %d\n", model->kNN);
     fprintf(fp,"kmeansClusters %d\n", model->kmeansClusters);
     fprintf(fp,"distCoef %f\n", model->distCoef);
@@ -726,8 +730,8 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
         for(int m = 0; m < model->dim * model->kmeansClusters; m++)
         {
             fprintf(fp, "%.16g ",model->bias[i][m]);
+            fprintf(fp, "\n");
         }
-        fprintf(fp, "\n");
     }    
 
     fprintf(fp, "bias\n");
@@ -736,8 +740,8 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
         for(int m = 0; m < model->kmeansClusters; m++)
         {
             fprintf(fp, "%.16g ",model->bias[i][m]);
+            fprintf(fp, "\n");
         }
-        fprintf(fp, "\n");
     }    
     
     fprintf(fp, "coordinates\n");
@@ -761,86 +765,204 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
 }
 
 
+
+static char* readline(FILE *input)
+{
+        int len;
+
+        if(fgets(line,max_line_len,input) == NULL)
+                return NULL;
+
+        while(strrchr(line,'\n') == NULL)
+        {
+                max_line_len *= 2;
+                line = (char *) realloc(line,max_line_len);
+                len = (int) strlen(line);
+                if(fgets(line+len,max_line_len-len,input) == NULL)
+                        break;
+        }
+        return line;
+}
     
 
 struct LLSVMModel *LoadModel(const char *fileName, 
                      int *lineCount)
 {
-    /*
-    FILE *f;
-    int max = 10000, maxline = 100000;
-
-    char *buf = new char[maxline];
-
-    f = fopen(fileName, "r");
-    if(f == NULL)
-    {
-        *arrayCounts = NULL, *arrayIndexes = NULL, *arrayValues = NULL, *targets = NULL;
-        return(0);
+    printf("loading model file %s\n", fileName);
+    FILE *fp = fopen(fileName,"rb");
+    if(fp==NULL) {
+        printf( "unnable to load model file %s", fileName);
+        exit(-1);
     }
-    int lineCount = 0;
-    while((fgets(buf, maxline, f) != NULL) && (strlen(buf) > 1)) lineCount++;
-    fseek(f, 0, SEEK_SET);
+    
+    char *old_locale = strdup(setlocale(LC_ALL, NULL));
+    setlocale(LC_ALL, "C");
 
-    if(labels != NULL) *labels = 0;
-    *arrayCounts = new int [lineCount];
-    *arrayIndexes = new int *[lineCount];
-    *arrayValues = new double *[lineCount];
-    *targets = new int[lineCount];
+    // read parameters
 
-    int *thisIndexes = new int[max];
-    double *thisValues = new double[max];
-
-    int index = 0;
-    while((fgets(buf, maxline, f) != NULL) && (strlen(buf) > 1))
+    LLSVMModel *model = Malloc(LLSVMModel,1);
+    
+    // TODO: reset all to NULL
+    printf("loading header.\n");
+    
+    char cmd[81];
+    while(1)
     {
-        buf[strlen(buf) - 1] = 0;
-        const char *data = buf;
+        fscanf(fp,"%80s",cmd);
+        printf("read: %s\n",cmd);
 
-        int target = atoi(data);
-        if(target == -1) target = 2;
-        if((labels != NULL) && (target > *labels)) *labels = target;
-        (*targets)[index] = target - 1;
-
-        data = strchr(data, 32);
-        if(data != NULL) data++;
-
-        int count = 0;
-        while((data != NULL) && (data[0] >= '0') && (data[0] <= '9'))
+        if(strcmp(cmd,"svm_type")==0)
         {
-            thisIndexes[count] = atoi(data) - 1;
-            if((dimensions != NULL) && (thisIndexes[count] + 1 > *dimensions)) *dimensions = thisIndexes[count] + 1;
-
-            data = strchr(data, 58);
-            if(data != NULL)
+            fscanf(fp,"%80s",cmd);
+            printf("%s", cmd);
+            
+            if(strcmp(cmd, "llsvm") == 0)
             {
-                data++;
-                thisValues[count] = atof(data);
-                if((!maxIndex) || (thisIndexes[count] < maxIndex)) count++;
+                // everything ok.
             }
-            data = strchr(data, 32);
-            if(data != NULL) data++;
+            else
+            {
+                fprintf(stderr,"unknown svm type.\n");
+                
+                setlocale(LC_ALL, old_locale);
+                exit(-1);
+            }
         }
-        (*arrayCounts)[index] = count;
-        (*arrayIndexes)[index] = new int[count];
-        (*arrayValues)[index] = new double [count];
-        memcpy((*arrayIndexes)[index], thisIndexes, count * sizeof(int));
-
-        memcpy((*arrayValues)[index], thisValues, count * sizeof(double));
-        index++;
+        else if(strcmp(cmd,"labels")==0)
+                fscanf(fp,"%d",&model->nModels);
+        else if(strcmp(cmd,"dim")==0)
+                fscanf(fp,"%d",&model->dim);
+        else if(strcmp(cmd,"kNN")==0)
+                fscanf(fp,"%d",&model->kNN);
+        else if(strcmp(cmd,"kmeansClusters")==0)
+                fscanf(fp,"%d",&model->kmeansClusters);
+        else if(strcmp(cmd,"distCoef")==0)
+                fscanf(fp,"%lf",&model->distCoef);
+        else if(strcmp(cmd,"SV")==0)
+        {
+            while(1)
+            {
+                int c = getc(fp);
+                if(c==EOF || c=='\n') break;    
+            }
+            break;
+        }
+        else
+        {
+            fprintf(stderr,"unknown text in model file: [%s]\n",cmd);
+            
+            setlocale(LC_ALL, old_locale);
+            free(old_locale);
+            free(model);
+            return NULL;
+        }
     }
-    fclose(f);
+    printf("loading data.\n");
 
-    int dim = ((dimensions == NULL) ? maxIndex : (*dimensions)), i, j;
-    *values = new double[dim * lineCount]; 
-    memset(*values, 0, dim * lineCount * sizeof(double));
-    for(i = 0; i < lineCount; i++) for(j = 0; j < (*arrayCounts)[i]; j++) (*values)[i * dim + (*arrayIndexes)[i][j]] = (*arrayValues)[i][j];
+    fscanf(fp,"%80s",cmd);
+    printf("read: %s\n",cmd);
 
-    if(buf != NULL) delete[] buf;
-    if(thisIndexes != NULL) delete[] thisIndexes;
-    if(thisValues != NULL) delete[] thisValues;
+    
+    if(strcmp(cmd,"weights")==0)
+    {
+        for (int i = 0; i < model->nModels; i++)
+        {
+            //model->sv_coef = Malloc(double *,m);
+            for(int m = 0; m < model->dim * model->kmeansClusters; m++)
+            {
+                double tmp;
+                fscanf(fp,"%lf",&tmp);
+                printf("%lf\n", tmp);
+            }
+        }    
 
-    return(lineCount);
-    */
+    }
+    else
+    {
+        printf ("expected weights.\n");
+        exit(-1);
+    }
+    
+    
+    fscanf(fp,"%80s",cmd);
+    printf("read: %s\n",cmd);
+
+    if(strcmp(cmd,"bias")==0)
+    {
+        for (int i = 0; i < model->nModels; i++)
+        {
+            //model->sv_coef = Malloc(double *,m);
+            for(int m = 0; m < model->kmeansClusters; m++)
+            {
+                double tmp;
+                fscanf(fp,"%lf",&tmp);
+                printf("%lf\n", tmp);
+            }
+        }    
+
+    }
+    else
+    {
+        printf("%s\n", cmd);
+        printf ("expected bias.\n");
+        exit(-1);
+    }
+    
+
+    fscanf(fp,"%80s",cmd);
+    printf("read: %s\n",cmd);
+    
+    if(strcmp(cmd,"coordinates")==0)
+    {
+        for (int i = 0; i < model->kNN; i++)
+        {
+            double tmp;
+            fscanf(fp,"%lf",&tmp);
+            printf("%lf\n", tmp);
+        }    
+
+    }
+    else
+    {
+        printf ("expected coordinates.\n");
+        exit(-1);
+    }
+
+    
+    fscanf(fp,"%80s",cmd);
+    printf("read: %s\n",cmd);
+    
+    if(strcmp(cmd,"indices")==0)
+    {
+        for (int i = 0; i < model->kNN; i++)
+        {
+            double tmp;
+            fscanf(fp,"%lf",&tmp);
+            printf("%lf\n", tmp);
+        }    
+
+    }
+    else
+    {
+        printf ("expected indices.\n");
+        exit(-1);
+    }
+    
+//--    
+    
+    printf("finished loading model.\n");
 }
+/*
+    // read sv_coef and SV
 
+    int elements = 0;
+    long pos = ftell(fp);
+
+    max_line_len = 1024;
+    line = Malloc(char,max_line_len);
+    char *p,*endptr,*idx,*val;
+
+    for(i=0;i<m;i++)
+        model->sv_coef[i] = Malloc(double,l);
+    model->SV = Malloc(svm_node*,l);
+    */
