@@ -1,8 +1,8 @@
 CC = g++
 LD = g++
 
-CFLAGS =   $(SFLAGS) -O3 -fomit-frame-pointer -ffast-math -Wall 
-LDFLAGS =  $(SFLAGS) -O3 -Wall
+CFLAGS =   $(SFLAGS) -O2 -g -fomit-frame-pointer -ffast-math -Wall 
+LDFLAGS =  $(SFLAGS) -O2 -g -Wall
 
 all: llsvm-predict llsvm-train
 

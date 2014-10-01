@@ -453,6 +453,7 @@ int Load(const char *fileName, double **values, int **arrayCounts, int ***arrayI
     FILE *f;
     int max = 10000, maxline = 100000;
 
+    printf ("loading data from %s\n", fileName);
     char *buf = new char[maxline];
 
     f = fopen(fileName, "r");
@@ -640,21 +641,15 @@ void predictLLSVM(const char *testFile,
 
     printf("loading model file..\n");
     struct LLSVMModel *llsvm_model;
-    llsvm_model = LoadModel(testFile, &lineCount);
+    llsvm_model = LoadModel(modelFile);
 
     printf("loading test file..\n");
-    lineCount = Load(testFile, &values, &arrayCounts, &arrayIndexes, &arrayValues, &targets, NULL, NULL, dim);
+    lineCount = Load(testFile, &values, &arrayCounts, &arrayIndexes, &arrayValues, &targets, NULL, NULL, llsvm_model->dim);
+    
 
-    // =-- MODEL
-    int kNN = 5;
-    int kmeansClusters = kmeansPerLabel * labels;
-    double *means = new double[dim * kmeansClusters];
-    int *coorIndexes = new int[lineCount * kNN];
-    double *coorWeights = new double[lineCount * kNN];
-    double distCoef = 0.1;
-    double **bias = new double *[labels];
-    double **weights = new double *[labels];
-
+    // reset these
+    int *coorIndexes = new int[llsvm_model->kNN];
+    double *coorWeights = new double[llsvm_model->kNN];
 
     printf("evaluating..\n");
     int correct = 0;
@@ -665,25 +660,26 @@ void predictLLSVM(const char *testFile,
         int bestIndex = 0;
         double bestResp = 0;
 
-        CalculateWeights(means, 
-                         dim, 
-                         kmeansClusters, 
+        CalculateWeights(llsvm_model->means, 
+                         llsvm_model->dim, 
+                         llsvm_model->kmeansClusters, 
                          arrayValues[i], 
                          arrayIndexes[i], 
                          arrayCounts[i], 
                          coorWeights, 
                          coorIndexes, 
-                         kNN, 
+                         llsvm_model->kNN, 
                          useDist, 
-                         distCoef);
+                         llsvm_model->distCoef);
 
         for(j = 0; j < labels; j++)
         {
             double sum = 0;
-            for(m = 0; m < kNN; m++)
+            for(m = 0; m < llsvm_model->kNN; m++)
             {
-                sum += bias[j][coorIndexes[m]] * coorWeights[m];
-                for(k = 0; k < arrayCounts[i]; k++) sum += arrayValues[i][k] * weights[j][coorIndexes[m] * dim + arrayIndexes[i][k]] * coorWeights[m];
+                sum += llsvm_model->bias[j][coorIndexes[m]] * coorWeights[m];
+                for(k = 0; k < arrayCounts[i]; k++) sum += arrayValues[i][k] * llsvm_model->weights[j][coorIndexes[m] * llsvm_model->dim + 
+                    arrayIndexes[i][k]] * coorWeights[m];
             }
             if((!j) || (sum > bestResp)) bestIndex = j, bestResp = sum;
         }
@@ -695,12 +691,12 @@ void predictLLSVM(const char *testFile,
 
     for(i = 0; i < labels; i++)
     {
-        if(weights[i] != NULL) delete[] weights[i];
-        if(bias[i] != NULL) delete[] bias[i];
+        if(llsvm_model->weights[i] != NULL) delete[] llsvm_model->weights[i];
+        if(llsvm_model->bias[i] != NULL) delete[] llsvm_model->bias[i];
     }
-    if(weights != NULL) delete[] weights;
-    if(bias != NULL) delete[] bias;
-    if(means != NULL) delete[] means;
+    if(llsvm_model->weights != NULL) delete[] llsvm_model->weights;
+    if(llsvm_model->bias != NULL) delete[] llsvm_model->bias;
+    if(llsvm_model->means != NULL) delete[] llsvm_model->means;
 
     printf("score  %f\n", correct /(double)lineCount);
     Free(lineCount, values, arrayCounts, arrayIndexes, arrayValues, targets);
@@ -721,8 +717,16 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
     fprintf(fp,"kNN %d\n", model->kNN);
     fprintf(fp,"kmeansClusters %d\n", model->kmeansClusters);
     fprintf(fp,"distCoef %f\n", model->distCoef);
-
     fprintf(fp, "SV\n");
+    
+    
+    fprintf(fp, "means\n");
+    for(int m = 0; m < model->dim * model->kmeansClusters; m++)
+    {
+        fprintf(fp, "%.16g ",model->means[m]);
+        fprintf(fp, "\n");
+    }    
+
     
     fprintf(fp, "weights\n");
     for (int i = 0; i < model->nModels; i++)
@@ -734,6 +738,7 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
         }
     }    
 
+    
     fprintf(fp, "bias\n");
     for (int i = 0; i < model->nModels; i++)
     {
@@ -743,20 +748,20 @@ int LLSVMSaveModel(const char *model_file_name, const LLSVMModel *model)
             fprintf(fp, "\n");
         }
     }    
-    
-    fprintf(fp, "coordinates\n");
+    /*
+    fprintf(fp, "coordinateweights\n");
     for (int i = 0; i < model->kNN; i++)
     {
         fprintf(fp, "%.16g ",model->coorWeights[i]);
         fprintf(fp, "\n");
     }    
 
-    fprintf(fp, "indices\n");
+    fprintf(fp, "coordinateindices\n");
     for (int i = 0; i < model->kNN; i++)
     {
         fprintf(fp, "%d ",model->coorIndexes[i]);
     }    
-
+*/
     setlocale(LC_ALL, old_locale);
     free(old_locale);
 
@@ -785,8 +790,7 @@ static char* readline(FILE *input)
 }
     
 
-struct LLSVMModel *LoadModel(const char *fileName, 
-                     int *lineCount)
+struct LLSVMModel *LoadModel(const char *fileName)
 {
     printf("loading model file %s\n", fileName);
     FILE *fp = fopen(fileName,"rb");
@@ -862,20 +866,35 @@ struct LLSVMModel *LoadModel(const char *fileName,
     fscanf(fp,"%80s",cmd);
     printf("read: %s\n",cmd);
 
+    if(strcmp(cmd,"means")==0)
+    {
+        model->means = Malloc(double, model->dim * model->kmeansClusters);
+        for(int m = 0; m < model->dim * model->kmeansClusters; m++)
+        {
+            fscanf(fp,"%lf",&model->means[m]);
+        }
+    }
+    else
+    {
+        printf ("expected means.\n");
+        exit(-1);
+    }
     
+
+    fscanf(fp,"%80s",cmd);
+    printf("read: %s\n",cmd);
+
     if(strcmp(cmd,"weights")==0)
     {
+        model->weights = Malloc(double*,model->nModels);
         for (int i = 0; i < model->nModels; i++)
         {
-            //model->sv_coef = Malloc(double *,m);
+            model->weights[i]= Malloc(double, model->dim * model->kmeansClusters);
             for(int m = 0; m < model->dim * model->kmeansClusters; m++)
             {
-                double tmp;
-                fscanf(fp,"%lf",&tmp);
-                printf("%lf\n", tmp);
+                fscanf(fp,"%lf",&model->weights[i][m]);
             }
         }    
-
     }
     else
     {
@@ -883,20 +902,19 @@ struct LLSVMModel *LoadModel(const char *fileName,
         exit(-1);
     }
     
-    
+
     fscanf(fp,"%80s",cmd);
     printf("read: %s\n",cmd);
 
     if(strcmp(cmd,"bias")==0)
     {
+        model->bias = Malloc(double*,model->nModels);
         for (int i = 0; i < model->nModels; i++)
         {
-            //model->sv_coef = Malloc(double *,m);
+            model->bias[i]= Malloc(double, model->dim * model->kmeansClusters);
             for(int m = 0; m < model->kmeansClusters; m++)
             {
-                double tmp;
-                fscanf(fp,"%lf",&tmp);
-                printf("%lf\n", tmp);
+                fscanf(fp,"%lf",&model->bias[i][m]);
             }
         }    
 
@@ -908,11 +926,11 @@ struct LLSVMModel *LoadModel(const char *fileName,
         exit(-1);
     }
     
-
+/*
     fscanf(fp,"%80s",cmd);
     printf("read: %s\n",cmd);
     
-    if(strcmp(cmd,"coordinates")==0)
+    if(strcmp(cmd,"coordinateweights")==0)
     {
         for (int i = 0; i < model->kNN; i++)
         {
@@ -932,7 +950,7 @@ struct LLSVMModel *LoadModel(const char *fileName,
     fscanf(fp,"%80s",cmd);
     printf("read: %s\n",cmd);
     
-    if(strcmp(cmd,"indices")==0)
+    if(strcmp(cmd,"coordinateindices")==0)
     {
         for (int i = 0; i < model->kNN; i++)
         {
@@ -948,21 +966,8 @@ struct LLSVMModel *LoadModel(const char *fileName,
         exit(-1);
     }
     
-//--    
-    
+*/    
     printf("finished loading model.\n");
+    return (model);
 }
-/*
-    // read sv_coef and SV
 
-    int elements = 0;
-    long pos = ftell(fp);
-
-    max_line_len = 1024;
-    line = Malloc(char,max_line_len);
-    char *p,*endptr,*idx,*val;
-
-    for(i=0;i<m;i++)
-        model->sv_coef[i] = Malloc(double,l);
-    model->SV = Malloc(svm_node*,l);
-    */
