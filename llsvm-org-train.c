@@ -577,8 +577,8 @@ void Calculate(const char *trainFile, const char *testFile,
 int main(int argc, char **argv)
 {
 	Calculate(FOLDER"usps-train.libsvm", FOLDER"usps-test.libsvm", 0.28, 8, 30, 70, 1.0, 0);
-	Calculate(FOLDER"mnist_train.libsvm", FOLDER"mnist_test.libsvm", 140, 18, 30, 40, 0.0000028, 0);
-	Calculate(FOLDER"letter_train.libsvm", FOLDER"letter_test.libsvm", 0.7, 14, 20, 1000, 0.2, 1);
+//	Calculate(FOLDER"mnist_train.libsvm", FOLDER"mnist_test.libsvm", 140, 18, 30, 40, 0.0000028, 0);
+//	Calculate(FOLDER"letter_train.libsvm", FOLDER"letter_test.libsvm", 0.7, 14, 20, 1000, 0.2, 1);
 
 	return(0);
 }

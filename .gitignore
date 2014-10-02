@@ -4,3 +4,4 @@ llsvm-train
 llsvm-predict
 model
 *.kate-swp
+tmp/**

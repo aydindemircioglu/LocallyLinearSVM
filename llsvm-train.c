@@ -97,9 +97,6 @@ void read_problem(const char *filename);
 void do_cross_validation();
 
 struct svm_parameter param;		// set by parse_command_line
-struct svm_problem prob;		// set by read_problem
-struct svm_model *model;
-struct svm_node *x_space;
 int cross_validation;
 int nr_fold;
 
@@ -205,34 +202,30 @@ int main(int argc, char **argv)
 {
     char input_file_name[1024];
     char model_file_name[1024];
-    const char *error_msg;
 
     parse_command_line(argc, argv, input_file_name, model_file_name);
+    /*
     // TODO in distant future
-    // error_msg = svm_check_parameter(&prob,&param);
+    const char *error_msg;
+    error_msg = llsvm_check_parameter(&prob,&param);
 
     if(error_msg)
     {
         fprintf(stderr,"ERROR: %s\n",error_msg);
         exit(1);
     }
-
-    {
-        // llsvm will save its model by itself
-        trainLLSVM (input_file_name, 
-                    model_file_name,
-                    param.scale, 
-                    param.kMeansperLabel, 
-                    param.kNN,
-                    param.svmIterations,
-                    param.distanceCoefficient,
-                    param.jointClustering);
-    }
+*/
+    // llsvm will save its model by itself
+    trainLLSVM (input_file_name, 
+                model_file_name,
+                param.scale, 
+                param.kMeansperLabel, 
+                param.kNN,
+                param.svmIterations,
+                param.distanceCoefficient,
+                param.jointClustering);
     
     svm_destroy_param(&param);
-    free(prob.y);
-    free(prob.x);
-    free(x_space);
     free(line);
 
     return 0;

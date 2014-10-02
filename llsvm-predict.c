@@ -84,7 +84,7 @@ int main(int argc, char **argv)
     
     printf("Predicting..\n");
 
-    predictLLSVM(argv[i], argv[i+1], 1.0, 2, 3, 4);
+    predictLLSVM(argv[i], argv[i+1]);
 
     fclose(input);
     fclose(output);

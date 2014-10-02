@@ -68,13 +68,14 @@
 
 struct LLSVMModel
 {
-    int nModels;
+    int labels;
     int dim;
     int kNN;
     int kmeansClusters;
     double *means;
-    int *coorIndexes;
-    double *coorWeights;
+    double scale;
+//    int *coorIndexes;
+    //double *coorWeights;
     double distCoef;
     double **bias;
     double **weights;
@@ -106,11 +107,7 @@ void trainLLSVM(const char *trainFile,
                const double distCoef, 
                const int jointClustering);
 void predictLLSVM(const char *testFile, 
-             const char *modelFile,
-               const double scale, 
-               const int kmeansPerLabel, 
-               const int svmIterations, 
-               const int jointClustering);
+             const char *modelFile);
 
 
 #endif
