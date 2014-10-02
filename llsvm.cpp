@@ -29,24 +29,18 @@
  * \date        2014
  *
  *
- * \par Copyright 1995-2014 Shark Development Team
- *
- * <BR><HR>
- * This file is part of Shark.
- * <http://image.diku.dk/shark/>
- *
- * Shark is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * Shark is distributed in the hope that it will be useful,
+ * This is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Shark.  If not, see <http://www.gnu.org/licenses/>.
+ * You have not received a copy of the GNU Lesser General Public License
+ * along with this. See <http://www.gnu.org/licenses/>.
  *
  */
 //===========================================================================
@@ -789,15 +783,16 @@ struct LLSVMModel *LoadModel(const char *fileName)
     // TODO: reset all to NULL
     printf("loading header.\n");
     
+    int result;
     char cmd[81];
     while(1)
     {
-        fscanf(fp,"%80s",cmd);
+        result = fscanf(fp,"%80s",cmd);
         if (verbose == 1) printf("read: %s\n",cmd);
 
         if(strcmp(cmd,"svm_type")==0)
         {
-            fscanf(fp,"%80s",cmd);
+            result = fscanf(fp,"%80s",cmd);
             if (verbose == 1) printf("%s", cmd);
             
             if(strcmp(cmd, "llsvm") == 0)
@@ -811,17 +806,17 @@ struct LLSVMModel *LoadModel(const char *fileName)
             }
         }
         else if(strcmp(cmd,"dim")==0)
-                fscanf(fp,"%d",&model->dim);
+                result = fscanf(fp,"%d",&model->dim);
         else if(strcmp(cmd,"kNN")==0)
-                fscanf(fp,"%d",&model->kNN);
+                result = fscanf(fp,"%d",&model->kNN);
         else if(strcmp(cmd,"kmeansClusters")==0)
-                fscanf(fp,"%d",&model->kmeansClusters);
+                result = fscanf(fp,"%d",&model->kmeansClusters);
         else if(strcmp(cmd,"distCoef")==0)
-                fscanf(fp,"%lf",&model->distCoef);
+                result = fscanf(fp,"%lf",&model->distCoef);
         else if(strcmp(cmd,"scale")==0)
-                fscanf(fp,"%lf",&model->scale);
+                result = fscanf(fp,"%lf",&model->scale);
         else if(strcmp(cmd,"labels")==0)
-                fscanf(fp,"%d",&model->labels);
+                result = fscanf(fp,"%d",&model->labels);
         else if(strcmp(cmd,"SV")==0)
         {
             while(1)
@@ -840,7 +835,7 @@ struct LLSVMModel *LoadModel(const char *fileName)
     }
     printf("loading data.\n");
 
-    fscanf(fp,"%80s",cmd);
+    result = fscanf(fp,"%80s",cmd);
     if (verbose == 1) printf("read: %s\n",cmd);
 
     if(strcmp(cmd,"means")==0)
@@ -848,7 +843,7 @@ struct LLSVMModel *LoadModel(const char *fileName)
         model->means = Malloc(double, model->dim * model->kmeansClusters);
         for(int m = 0; m < model->dim * model->kmeansClusters; m++)
         {
-            fscanf(fp,"%lf",&model->means[m]);
+            result = fscanf(fp,"%lf",&model->means[m]);
         }
     }
     else
@@ -858,7 +853,7 @@ struct LLSVMModel *LoadModel(const char *fileName)
     }
     
 
-    fscanf(fp,"%80s",cmd);
+    result = fscanf(fp,"%80s",cmd);
     if (verbose == 1) printf("read: %s\n",cmd);
 
     if(strcmp(cmd,"weights")==0)
@@ -869,7 +864,7 @@ struct LLSVMModel *LoadModel(const char *fileName)
             model->weights[i]= Malloc(double, model->dim * model->kmeansClusters);
             for(int m = 0; m < model->dim * model->kmeansClusters; m++)
             {
-                fscanf(fp,"%lf",&model->weights[i][m]);
+                result = fscanf(fp,"%lf",&model->weights[i][m]);
             }
         }    
     }
@@ -880,7 +875,7 @@ struct LLSVMModel *LoadModel(const char *fileName)
     }
     
 
-    fscanf(fp,"%80s",cmd);
+    result = fscanf(fp,"%80s",cmd);
     if (verbose == 1) printf("read: %s\n",cmd);
 
     if(strcmp(cmd,"bias")==0)
@@ -891,7 +886,7 @@ struct LLSVMModel *LoadModel(const char *fileName)
             model->bias[i]= Malloc(double, model->dim * model->kmeansClusters);
             for(int m = 0; m < model->kmeansClusters; m++)
             {
-                fscanf(fp,"%lf",&model->bias[i][m]);
+                result = fscanf(fp,"%lf",&model->bias[i][m]);
             }
         }    
 

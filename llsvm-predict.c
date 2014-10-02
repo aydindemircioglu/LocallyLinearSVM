@@ -1,19 +1,49 @@
-// This is the re-implementation of the paper :
-// L.Ladicky & P.H.S. Torr : Locally Linear Support Vector Machines
-
-// The code is optimised to get the highest percentage.
-// The performance should be :
-// MNIST  : 98.28 (98.15 in the paper)
-// LETTER : 95.90 (94.68 in the paper)
-// USPS   : 95.12 (94.22 in the paper)
-
-// To optimise for speed (and convergence in lower number of iterations), lambda
-// should be decreased (10^-6 for example) and other parameters (scale, ..) tuned
-// accordingly. Yes, I'm fully aware the meta-parameters were tuned on the test set,
-// which is not really the right thing to do, but there is no validation set. It
-// should not be hard to beat these numbers (tuned in a day), feel free to send me
-// better parameters:). Original code with the parameters to get the numbers in
-// the paper has been lost (I will skip the details).
+//===========================================================================
+/*!
+ *
+ *
+ * \brief       Locally Linear SVM wrapper.
+ *
+ *  This is the re-implementation of the paper :
+ *  L.Ladicky & P.H.S. Torr : Locally Linear Support Vector Machines
+ *
+ *  Wrapper hacked by Aydin Demircioglu by using LibSVM code.
+ * 
+ *  The code is optimised to get the highest percentage.
+ *  The performance should be :
+ *  MNIST  : 98.28 (98.15 in the paper)
+ *  LETTER : 95.90 (94.68 in the paper)
+ *  USPS   : 95.12 (94.22 in the paper)
+ *
+ *  To optimise for speed (and convergence in lower number of iterations), lambda
+ *  should be decreased (10^-6 for example) and other parameters (scale, ..) tuned
+ *  accordingly. Yes, I'm fully aware the meta-parameters were tuned on the test set,
+ *  which is not really the right thing to do, but there is no validation set. It
+ *  should not be hard to beat these numbers (tuned in a day), feel free to send me
+ *  better parameters:). Original code with the parameters to get the numbers in
+ *  the paper has been lost (I will skip the details).
+ *
+ *
+ *
+ * \author      Aydin Demircioglu
+ * \date        2014
+ *
+ *
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You have not received a copy of the GNU Lesser General Public License
+ * along with this. See <http://www.gnu.org/licenses/>.
+ *
+ */
+//===========================================================================
 
 #include <stdio.h>
 #include <stdlib.h>

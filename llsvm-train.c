@@ -29,24 +29,18 @@
  * \date        2014
  *
  *
- * \par Copyright 1995-2014 Shark Development Team
- *
- * <BR><HR>
- * This file is part of Shark.
- * <http://image.diku.dk/shark/>
- *
- * Shark is free software: you can redistribute it and/or modify
+ * This is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * Shark is distributed in the hope that it will be useful,
+ * This is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Shark.  If not, see <http://www.gnu.org/licenses/>.
+ * You have not received a copy of the GNU Lesser General Public License
+ * along with this. See <http://www.gnu.org/licenses/>.
  *
  */
 //===========================================================================
@@ -78,10 +72,6 @@ void exit_with_help()
     "-d distance coefficient (default 0.1)\n"
     "-j joint clustering on/off (default 0 = off)\n"
 	"-q : quiet mode (no outputs)\n"
-    "#-l walltime : set maximum walltime in minutes (default -1)\n"
-    "#-a savetime : set time interval in minutes to report current primalvalue (default -1)\n"
-    "#-x modelpath : path to save walltime models (default .).\n"
-    "#-k subsampling: amount to subsample, between 0.0 and 1.0, e.g. 0.5=half of dataset. First N elements will be taken. (default 1.0)\n"
 	);
 	exit(1);
 }
@@ -107,7 +97,6 @@ static char *line = NULL;
 extern double subsamplingAmount;
 extern int walltime;
 extern int savetime;
-extern std::string modelPath;
 
 
 
@@ -163,9 +152,6 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
                     break;
             case 'l':
                     walltime = atoi(argv[i]);
-                    break;
-            case 'x':
-                    modelPath = (argv[i]);
                     break;
 			default:
 				fprintf(stderr,"Unknown option: -%c\n", argv[i-1][1]);

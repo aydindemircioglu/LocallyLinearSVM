@@ -4,7 +4,7 @@ LD = g++
 CFLAGS =   $(SFLAGS) -O2 -g -fomit-frame-pointer -ffast-math -Wall 
 LDFLAGS =  $(SFLAGS) -O2 -g -Wall
 
-all: svm.o llsvm.o llsvm-predict llsvm-train
+all: llsvm-predict llsvm-train
 
 llsvm-predict: llsvm-predict.c svm.o llsvm.o
 	$(LD) $(LDFLAGS) -o llsvm-predict llsvm-predict.c svm.o llsvm.o
